@@ -1,5 +1,6 @@
 import os
 import logging
+from dotenv import load_dotenv
 import time
 import threading
 import schedule
@@ -9,6 +10,9 @@ from scraper import fetch_feed_articles, fetch_article_text, RSS_FEEDS
 from summarizer import summarize_daily_news, summarize_single_article
 from database import init_db, is_url_seen, mark_url_seen
 
+# Load environment variables from .env file if it exists
+load_dotenv()
+
 # Logging configuration
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -17,7 +21,15 @@ logger = logging.getLogger(__name__)
 
 # Constants
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")  # Chat ID of the user for the 8 AM message
+TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if not TELEGRAM_TOKEN:
+    logger = logging.getLogger(__name__)
+    logger.warning("TELEGRAM_TOKEN not found in environment variables.")
+if not GEMINI_API_KEY:
+    logger = logging.getLogger(__name__)
+    logger.warning("GEMINI_API_KEY not found in environment variables.")
 
 # Initialize DB
 init_db()
