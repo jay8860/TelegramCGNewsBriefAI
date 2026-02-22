@@ -5,7 +5,7 @@ import threading
 import schedule
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-from scraper import fetch_feed_articles, fetch_article_text
+from scraper import fetch_feed_articles, fetch_article_text, RSS_FEEDS
 from summarizer import summarize_daily_news, summarize_single_article
 from database import init_db, is_url_seen, mark_url_seen
 
@@ -66,6 +66,9 @@ def run_scheduler(application):
     schedule.every().day.at("08:00").do(
         lambda: application.job_queue.run_once(send_daily_briefing, 1)
     )
+    schedule.every().day.at("20:00").do(
+        lambda: application.job_queue.run_once(send_daily_briefing, 1)
+    )
     
     while True:
         schedule.run_pending()
@@ -79,7 +82,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Hello {user.first_name}! I am your Chhattisgarh News Brief AI.\n\n"
         f"Your Chat ID is: `{chat_id}`\n"
         f"Please set this as your TARGET_CHAT_ID environment variable in Railway.\n\n"
-        f"I will send you a daily briefing at 8 AM. You can also send me any article text to summarize."
+        f"I will send you a daily briefing at 8 AM and 8 PM. You can also send me any article text to summarize.\n"
+        f"Type /help to see all available commands."
     )
     await update.message.reply_markdown(welcome_text)
 
@@ -141,6 +145,10 @@ def main():
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("briefing", trigger_briefing))
+    application.add_handler(CommandHandler("news", trigger_briefing))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("sources", sources_command))
+    application.add_handler(CommandHandler("status", status_command))
 
     # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_message))
