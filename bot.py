@@ -13,26 +13,13 @@ from database import init_db, is_url_seen, mark_url_seen
 # Load environment variables from .env file if it exists
 load_dotenv()
 
-# Logging configuration
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# These will be fetched inside main() to ensure they are fresh
+TELEGRAM_TOKEN = None
+TARGET_CHAT_ID = None
+GEMINI_API_KEY = None
 
-# Constants
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-
-if not TELEGRAM_TOKEN:
-    logger = logging.getLogger(__name__)
-    logger.warning("TELEGRAM_TOKEN not found in environment variables.")
-if not GEMINI_API_KEY:
-    logger = logging.getLogger(__name__)
-    logger.warning("GEMINI_API_KEY not found in environment variables.")
-
-# Initialize DB
-init_db()
+# Initialize DB will be called in main
+# init_db()
 
 async def send_daily_briefing(context: ContextTypes.DEFAULT_TYPE):
     """Job function to send the 8 AM daily briefing."""
@@ -181,10 +168,32 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Start the bot."""
+    global TELEGRAM_TOKEN, TARGET_CHAT_ID, GEMINI_API_KEY
+    
+    # Configure logging
+    logging.basicConfig(
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    )
+    logger = logging.getLogger(__name__)
+
+    # Debug: Print all available environment variable names (not values)
+    logger.info(f"Available Environment Variables: {list(os.environ.keys())}")
+
+    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
+    TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
     if not TELEGRAM_TOKEN:
-        logger.error("TELEGRAM_TOKEN must be set.")
+        logger.error("CRITICAL: TELEGRAM_TOKEN environment variable is missing!")
+        logger.info("TIP: Check the 'Variables' tab in your Railway service and ensures it is named EXACTLY 'TELEGRAM_TOKEN'.")
         return
 
+    if not GEMINI_API_KEY:
+        logger.error("CRITICAL: GEMINI_API_KEY environment variable is missing!")
+        return
+
+    init_db()
+    
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # on different commands - answer in Telegram
