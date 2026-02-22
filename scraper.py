@@ -13,7 +13,7 @@ RSS_FEEDS = {
 }
 
 def fetch_feed_articles(max_per_feed=5):
-    \"\"\"Fetches the latest articles from configured RSS feeds.\"\"\"
+    """Fetches the latest articles from configured RSS feeds."""
     all_articles = []
     for source_name, feed_url in RSS_FEEDS.items():
         try:
@@ -31,7 +31,7 @@ def fetch_feed_articles(max_per_feed=5):
     return all_articles
 
 def fetch_article_text(url):
-    \"\"\"Fetches the full text of an article given its URL.\"\"\"
+    """Fetches the full text of an article given its URL."""
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         response = requests.get(url, headers=headers, timeout=10)

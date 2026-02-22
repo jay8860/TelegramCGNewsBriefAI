@@ -5,7 +5,7 @@ import logging
 DB_PATH = os.environ.get("DB_PATH", "seen_articles.db")
 
 def init_db():
-    \"\"\"Initialize the SQLite database.\"\"\"
+    """Initialize the SQLite database."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -23,7 +23,7 @@ def init_db():
             conn.close()
 
 def is_url_seen(url):
-    \"\"\"Check if a URL has already been processed.\"\"\"
+    """Check if a URL has already been processed."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -38,7 +38,7 @@ def is_url_seen(url):
             conn.close()
 
 def mark_url_seen(url):
-    \"\"\"Mark a URL as processed.\"\"\"
+    """Mark a URL as processed."""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()

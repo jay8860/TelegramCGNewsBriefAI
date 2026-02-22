@@ -23,7 +23,7 @@ TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")  # Chat ID of the user for the
 init_db()
 
 async def send_daily_briefing(context: ContextTypes.DEFAULT_TYPE):
-    \"\"\"Job function to send the 8 AM daily briefing.\"\"\"
+    """Job function to send the 8 AM daily briefing."""
     if not TARGET_CHAT_ID:
         logger.error("TARGET_CHAT_ID environment variable not set. Cannot send daily briefing.")
         return
@@ -61,7 +61,7 @@ async def send_daily_briefing(context: ContextTypes.DEFAULT_TYPE):
 
 # Scheduled task runner
 def run_scheduler(application):
-    \"\"\"Runs the schedule continuously in a separate thread.\"\"\"
+    """Runs the schedule continuously in a separate thread."""
     # Assuming Indian Standard Time (IST) configured on server or Railway
     schedule.every().day.at("08:00").do(
         lambda: application.job_queue.run_once(send_daily_briefing, 1)
@@ -72,19 +72,19 @@ def run_scheduler(application):
         time.sleep(60)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    \"\"\"Send a message when the command /start is issued.\"\"\"
+    """Send a message when the command /start is issued."""
     user = update.effective_user
     chat_id = update.effective_chat.id
     welcome_text = (
-        f"Hello {user.first_name}! I am your Chhattisgarh News Brief AI.\\n\\n"
-        f"Your Chat ID is: `{chat_id}`\\n"
-        f"Please set this as your TARGET_CHAT_ID environment variable in Railway.\\n\\n"
+        f"Hello {user.first_name}! I am your Chhattisgarh News Brief AI.\n\n"
+        f"Your Chat ID is: `{chat_id}`\n"
+        f"Please set this as your TARGET_CHAT_ID environment variable in Railway.\n\n"
         f"I will send you a daily briefing at 8 AM. You can also send me any article text to summarize."
     )
     await update.message.reply_markdown(welcome_text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    \"\"\"Summarize any pasted article or long text.\"\"\"
+    """Summarize any pasted article or long text."""
     text = update.message.text
     if len(text) < 50:
         await update.message.reply_text("Please paste a longer text or article to summarize.")
@@ -97,7 +97,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await processing_msg.edit_text(summary, parse_mode='Markdown')
 
 async def trigger_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    \"\"\"Manual trigger to get the briefing immediately. Useful for testing.\"\"\"
+    """Manual trigger to get the briefing immediately. Useful for testing."""
     if str(update.effective_chat.id) != TARGET_CHAT_ID:
         await update.message.reply_text("You are not authorized to trigger this command.")
         return
@@ -131,7 +131,7 @@ async def trigger_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mark_url_seen(art['url'])
 
 def main():
-    \"\"\"Start the bot.\"\"\"
+    """Start the bot."""
     if not TELEGRAM_TOKEN:
         logger.error("TELEGRAM_TOKEN must be set.")
         return

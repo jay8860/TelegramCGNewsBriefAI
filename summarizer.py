@@ -11,19 +11,19 @@ def get_gemini_client():
     return genai.Client(api_key=api_key)
 
 def summarize_daily_news(articles):
-    \"\"\"
+    """
     Sends raw article data to Gemini to get a consolidated, formatted daily summary.
-    \"\"\"
+    """
     client = get_gemini_client()
     if not client:
         return "Error: Gemini API key not configured."
 
     # Prepare context
-    context = "Here are the top news articles collected today from Chhattisgarh:\\n\\n"
+    context = "Here are the top news articles collected today from Chhattisgarh:\n\n"
     for idx, art in enumerate(articles, 1):
-        context += f"Article {idx}: [Source: {art['source']}]\\nTitle: {art['title']}\\nContent Snippet: {art.get('content', '')[:1000]}\\nURL: {art['url']}\\n\\n"
+        context += f"Article {idx}: [Source: {art['source']}]\nTitle: {art['title']}\nContent Snippet: {art.get('content', '')[:1000]}\nURL: {art['url']}\n\n"
 
-    system_instruction = \"\"\"
+    system_instruction = """
 You are an expert news analyst and executive assistant for an IAS officer in Chhattisgarh.
 Your task is to analyze the provided news snippets and generate a daily briefing at 8 AM.
 
@@ -40,7 +40,7 @@ CRITICAL RULES:
 7. Include the source name briefly for context.
 
 Make the output clean, professional, and easy to skim.
-\"\"\"
+"""
 
     try:
         response = client.models.generate_content(
@@ -57,12 +57,12 @@ Make the output clean, professional, and easy to skim.
         return f"Error generating summary: {e}"
 
 def summarize_single_article(text):
-    \"\"\"Summarizes a single pasted article text.\"\"\"
+    """Summarizes a single pasted article text."""
     client = get_gemini_client()
     if not client:
         return "Error: Gemini API key not configured."
 
-    prompt = f"Please provide a concise, bulleted summary in English of the following article:\\n\\n{text}"
+    prompt = f"Please provide a concise, bulleted summary in English of the following article:\n\n{text}"
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash',
