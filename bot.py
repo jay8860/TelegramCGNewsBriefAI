@@ -131,8 +131,41 @@ async def trigger_briefing(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await processing_msg.edit_text(summary_text, parse_mode='Markdown')
 
     # 5. Mark as seen
+    # 5. Mark as seen
     for art in unseen_articles:
         mark_url_seen(art['url'])
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Send a message when the command /help is issued."""
+    help_text = (
+        "Here are the commands you can use:\n\n"
+        "/start - Get your Chat ID and a welcome message.\n"
+        "/help - Show this help message.\n"
+        "/news - Instantly fetch and summarize the latest news.\n"
+        "/briefing - (Alias for /news) Instantly fetch and summarize the latest news.\n"
+        "/sources - See the list of news sources I monitor.\n"
+        "/status - Check my current status and schedule.\n\n"
+        "You can also paste the full text of any article here, and I will summarize it for you!"
+    )
+    await update.message.reply_text(help_text)
+
+async def sources_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """List the news sources being monitored."""
+    sources_text = "I am currently monitoring the following sources:\n\n"
+    for name, url in RSS_FEEDS.items():
+        sources_text += f"• *{name}*\n"
+    await update.message.reply_markdown(sources_text)
+
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show the bot's status."""
+    status_text = (
+        "✅ *Bot Status: ONLINE*\n\n"
+        "Scheduled Briefings:\n"
+        "• 08:00 AM Daily\n"
+        "• 08:00 PM Daily\n\n"
+        "I am actively monitoring news sources and ready to summarize articles on demand."
+    )
+    await update.message.reply_markdown(status_text)
 
 def main():
     """Start the bot."""
