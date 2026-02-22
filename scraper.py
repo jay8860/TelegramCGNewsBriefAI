@@ -1,0 +1,47 @@
+import requests
+from bs4 import BeautifulSoup
+import feedparser
+import logging
+
+# Configure some common RSS feeds for Chhattisgarh
+RSS_FEEDS = {
+    "Patrika State": "https://www.patrika.com/chhattisgarh-news.xml",
+    "Patrika Bastar/Jagdalpur": "https://www.patrika.com/jagdalpur-news.xml",
+    "Patrika Surguja/Ambikapur": "https://www.patrika.com/ambikapur-news.xml",
+    "Patrika Raipur": "https://www.patrika.com/raipur-news.xml",
+    "IBC24 State": "https://www.ibc24.in/category/chhattisgarh/feed",
+}
+
+def fetch_feed_articles(max_per_feed=5):
+    \"\"\"Fetches the latest articles from configured RSS feeds.\"\"\"
+    all_articles = []
+    for source_name, feed_url in RSS_FEEDS.items():
+        try:
+            feed = feedparser.parse(feed_url)
+            for entry in feed.entries[:max_per_feed]:
+                all_articles.append({
+                    "source": source_name,
+                    "title": entry.title,
+                    "url": entry.link,
+                    "summary": entry.get("summary", ""),
+                    "published": entry.get("published", "")
+                })
+        except Exception as e:
+            logging.error(f"Error fetching RSS {feed_url}: {e}")
+    return all_articles
+
+def fetch_article_text(url):
+    \"\"\"Fetches the full text of an article given its URL.\"\"\"
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Generic paragraph extraction
+        paragraphs = soup.find_all('p')
+        text = ' '.join([p.get_text().strip() for p in paragraphs if len(p.get_text().strip()) > 20])
+        return text
+    except Exception as e:
+        logging.error(f"Error fetching article text {url}: {e}")
+        return ""
