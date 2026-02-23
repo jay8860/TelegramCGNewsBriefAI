@@ -11,6 +11,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from scraper import fetch_feed_articles, fetch_article_text, RSS_FEEDS
 from summarizer import summarize_daily_news, summarize_single_article
 from database import init_db, is_url_seen, mark_url_seen
+from datetime import datetime, time as dt_time, timedelta
+import asyncio
 
 # Load environment variables from .env file if it exists
 load_dotenv()
@@ -24,15 +26,15 @@ GEMINI_API_KEY = None
 # init_db()
 
 async def send_daily_briefing(context: ContextTypes.DEFAULT_TYPE):
-    """Job function to send the 8 AM daily briefing."""
+    """Job function to send the briefing. Prepares in advance then waits until the hour."""
     if not TARGET_CHAT_ID:
         logger.error("TARGET_CHAT_ID environment variable not set. Cannot send daily briefing.")
         return
 
-    logger.info("Starting daily briefing generation...")
+    logger.info("Starting briefing preparation (Advance Trigger)...")
     
-    # 1. Fetch articles
-    raw_articles = fetch_feed_articles(max_per_feed=5)
+    # 1. Fetch articles (filtered by last 2 days in scraper.py)
+    raw_articles = fetch_feed_articles(max_per_feed=8, days_limit=2)
     
     # 2. Filter out already seen and get text
     unseen_articles = []
@@ -44,20 +46,33 @@ async def send_daily_briefing(context: ContextTypes.DEFAULT_TYPE):
                 unseen_articles.append(art)
 
     if not unseen_articles:
-        await context.bot.send_message(chat_id=TARGET_CHAT_ID, text="Good morning! There are no new fresh high-priority news articles to summarize today.")
+        logger.info("No new fresh high-priority news articles found during preparation.")
+        # We still want to check again at the exact time or just send a 'No news' message then
+        # For now, if no news, we don't wait.
         return
 
     # 3. Summarize using Gemini
     summary_text = summarize_daily_news(unseen_articles)
 
-    # 4. Send to user
+    # 4. Wait until the target time (Top of the hour: 00:00)
+    now = datetime.now(pytz.timezone('Asia/Kolkata'))
+    target_time = now.replace(minute=0, second=0, microsecond=0)
+    if now.minute >= 45: # If we triggered at 45, target is next hour
+        target_time += timedelta(hours=1)
+    
+    wait_seconds = (target_time - now).total_seconds()
+    if wait_seconds > 0 and wait_seconds < 1000: # Ensure it's a reasonable wait (15 mins is 900s)
+        logger.info(f"Summary generated. Waiting {wait_seconds:.1f} seconds to post at {target_time.strftime('%I:%M %p')}...")
+        await asyncio.sleep(wait_seconds)
+
+    # 5. Send to user
     await context.bot.send_message(chat_id=TARGET_CHAT_ID, text=summary_text, parse_mode='Markdown')
 
-    # 5. Mark as seen
+    # 6. Mark as seen
     for art in unseen_articles:
         mark_url_seen(art['url'])
         
-    logger.info("Daily briefing sent efficiently.")
+    logger.info("Briefing sent at scheduled time.")
 
 
 # Removed external scheduler runner in favor of integrated JobQueue
@@ -187,24 +202,33 @@ def main():
     
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
-    # Set up the schedule using the built-in JobQueue (More reliable)
+    # Set up the schedule using the built-in JobQueue
     ist = pytz.timezone('Asia/Kolkata')
     
-    # Morning briefing at 8:00 AM IST
+    # Trigger 15 minutes early (07:45 AM IST) to prepare summary for 08:00 AM
     application.job_queue.run_daily(
         send_daily_briefing, 
-        time=dt_time(hour=8, minute=0, second=0, tzinfo=ist),
-        name="morning_brief"
+        time=dt_time(hour=7, minute=45, second=0, tzinfo=ist),
+        name="morning_prep"
     )
     
-    # Evening briefing at 8:00 PM IST
+    # Trigger 15 minutes early (07:45 PM IST) to prepare summary for 08:00 PM
     application.job_queue.run_daily(
         send_daily_briefing, 
-        time=dt_time(hour=20, minute=0, second=0, tzinfo=ist),
-        name="evening_brief"
+        time=dt_time(hour=19, minute=45, second=0, tzinfo=ist),
+        name="evening_prep"
     )
 
-    logger.info("Bot scheduler initialized for 8 AM and 8 PM IST.")
+    # One-off test briefing for today at 9:30 AM IST
+    now_ist = datetime.now(ist)
+    test_time = ist.localize(datetime(now_ist.year, now_ist.month, now_ist.day, 9, 30, 0))
+    if now_ist < test_time:
+        application.job_queue.run_once(send_daily_briefing, when=test_time, name="test_930_brief")
+        logger.info(f"One-off test briefing scheduled for today at 9:30 AM IST.")
+    else:
+        logger.info(f"Current time {now_ist.strftime('%H:%M')} is past 9:30 AM, test briefing not scheduled.")
+
+    logger.info("Bot scheduler initialized with 15-min advance preparation.")
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start_command))
