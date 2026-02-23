@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import time
 import threading
 import schedule
+import pytz
+from datetime import time as dt_time
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from scraper import fetch_feed_articles, fetch_article_text, RSS_FEEDS
@@ -58,20 +60,9 @@ async def send_daily_briefing(context: ContextTypes.DEFAULT_TYPE):
     logger.info("Daily briefing sent efficiently.")
 
 
-# Scheduled task runner
-def run_scheduler(application):
-    """Runs the schedule continuously in a separate thread."""
-    # Assuming Indian Standard Time (IST) configured on server or Railway
-    schedule.every().day.at("08:00").do(
-        lambda: application.job_queue.run_once(send_daily_briefing, 1)
-    )
-    schedule.every().day.at("20:00").do(
-        lambda: application.job_queue.run_once(send_daily_briefing, 1)
-    )
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+# Removed external scheduler runner in favor of integrated JobQueue
+# def run_scheduler(application):
+#     ...
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
@@ -196,6 +187,25 @@ def main():
     
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
+    # Set up the schedule using the built-in JobQueue (More reliable)
+    ist = pytz.timezone('Asia/Kolkata')
+    
+    # Morning briefing at 8:00 AM IST
+    application.job_queue.run_daily(
+        send_daily_briefing, 
+        time=dt_time(hour=8, minute=0, second=0, tzinfo=ist),
+        name="morning_brief"
+    )
+    
+    # Evening briefing at 8:00 PM IST
+    application.job_queue.run_daily(
+        send_daily_briefing, 
+        time=dt_time(hour=20, minute=0, second=0, tzinfo=ist),
+        name="evening_brief"
+    )
+
+    logger.info("Bot scheduler initialized for 8 AM and 8 PM IST.")
+
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("briefing", trigger_briefing))
@@ -206,10 +216,6 @@ def main():
 
     # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~(filters.COMMAND), handle_message))
-
-    # Start the scheduler thread
-    scheduler_thread = threading.Thread(target=run_scheduler, args=(application,), daemon=True)
-    scheduler_thread.start()
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
